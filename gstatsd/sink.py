@@ -83,7 +83,6 @@ class GraphiteSink(Sink):
         counts = stats.counts
         for key, val in counts.iteritems():
             buf.write('stats.%s %f %d\n' % (key, val / stats.interval, now))
-            buf.write('stats_counts.%s %f %d\n' % (key, val, now))
             num_stats += 1
 
         buf.write('statsd.numStats %d %d\n' % (num_stats, now))
