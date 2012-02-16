@@ -44,11 +44,11 @@ class GraphiteSink(Sink):
     def add(self, spec):
         self._hosts.append(self._parse_hostport(spec))
 
-    def send(self, stats):
+    def send(self, stats, uniques=None):
         "Format stats and send to one or more Graphite hosts"
         buf = cStringIO.StringIO()
         now = int(time.time())
-        num_stats = 0
+        num_uniques = num_stats = 0
 
         # timer stats
         pct = stats.percent
@@ -84,8 +84,15 @@ class GraphiteSink(Sink):
         for key, val in counts.iteritems():
             buf.write('stats.%s %f %d\n' % (key, val / stats.interval, now))
             num_stats += 1
+        
+        # unique stats
+        if uniques:
+            for key in uniques.metrics.iterkeys():
+                buf.write('uniques.%s %d %d\n' % (key, uniques.count(key), now))
+                num_uniques += 1
 
         buf.write('statsd.numStats %d %d\n' % (num_stats, now))
+        buf.write('statsd.numUniques %d %d\n' % (num_uniques, now))
 
         # TODO: add support for N retries
 

@@ -1,6 +1,7 @@
 
 # standard
 import cStringIO
+import cPickle
 import optparse
 import os
 import resource
@@ -12,13 +13,15 @@ import traceback
 from collections import defaultdict
 
 # local
-import sink
+import sink, unique
 from core import __version__
 
 # vendor
 import gevent, gevent.socket
 socket = gevent.socket
 
+# unique tracking configuration
+UNIQUE_STORAGE = '/opt/gstatsd'
 
 # constants
 INTERVAL = 10.0
@@ -42,9 +45,7 @@ KEY_DELETIONS = ''.join(ALL_ASCII.difference(KEY_VALID + '/'))
 E_BADADDR = 'invalid bind address specified %r'
 E_NOSINKS = 'you must specify at least one stats sink'
 
-
 class Stats(object):
-
     def __init__(self):
         self.timers = defaultdict(list)
         self.counts = defaultdict(float)
@@ -98,6 +99,7 @@ class StatsDaemon(object):
         if port is None:
             self.exit(E_BADADDR % bindaddr)
         self._bindaddr = (host, port)
+        self._pickle = os.path.join(UNIQUE_STORAGE, "%s:%s" % self._bindaddr)
 
         # TODO: generalize to support more than one sink type.  currently
         # only the graphite backend is present, but we may want to write
@@ -118,6 +120,11 @@ class StatsDaemon(object):
                 self.error(str(err))
             self.exit('exiting.')
 
+        try:
+            self._uniques = cPickle.load(open(self._pickle))
+            self.error('loaded %d metrics from %s' % (len(self._uniques.metrics), self._pickle))
+        except IOError, e:
+            self._uniques = unique.Uniques()
         self._percent = float(percent)
         self._interval = float(interval)
         self._debug = debug
@@ -155,10 +162,12 @@ class StatsDaemon(object):
                 # send the stats to the sink which in turn broadcasts
                 # the stats packet to one or more hosts.
                 try:
-                    self._sink.send(stats)
+                    self._sink.send(stats, self._uniques)
                 except Exception, ex:
                     trace = traceback.format_tb(sys.exc_info()[-1])
                     self.error(''.join(trace))
+                
+                self._uniques.expire()
 
         self._flush_task = gevent.spawn(_flush_impl)
 
@@ -174,6 +183,7 @@ class StatsDaemon(object):
 
     def _shutdown(self):
         "Shutdown the server"
+        cPickle.dump(self._uniques, open(self._pickle, 'w'))
         self.exit("service exiting", code=0)
 
     def _process(self, data, _):
@@ -206,6 +216,15 @@ class StatsDaemon(object):
                     srate = float(fields[2][1:])
                 value = float(value if value else 1) * (1 / srate)
                 stats.counts[key] += value
+            
+            # unique tracker
+            elif stype == 'u':
+                # monte.return.unique:fb-500013538|u|@1.000000
+                self._uniques.add(key, value)
+            
+            else:
+                print 'unknown stype %s' % stype
+
 
 
 def main():
