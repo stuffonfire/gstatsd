@@ -33,6 +33,8 @@ class Uniques(object):
     def __init__(self, period=1440):
     	self.period = period # in minutes
         self.metrics = {}
+        self.expiration = 60
+        self.countCache = {} # {metric: (stamp, count)}
 
     now = property(fget=lambda s: int(math.floor(time.time()) / 60))
     def add(self, metric, value):
@@ -57,7 +59,14 @@ class Uniques(object):
         return rc
     
     def count(self, metric):
-        return len(self.uniques(metric))
+        if self.countCache.get(metric):
+            stamp, count = self.countCache[metric]
+            if stamp < time.time() - self.expiration:
+                self.countCache.pop(metric)
+        if not self.countCache.get(metric):
+            self.countCache[metric] = (time.time(), len(self.uniques(metric)))
+        stamp, count = self.countCache[metric]
+        return count
 
     def __repr__(self):
         return '<%s[0x%x] %s>' % (self.__class__.__name__, id(self), ' '.join('%s=%s' % (k, v) for k, v in self.__dict__.iteritems()))
