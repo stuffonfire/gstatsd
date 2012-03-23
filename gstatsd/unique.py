@@ -34,6 +34,7 @@ class Uniques(object):
     host = 'gordo2'
     port = 6380
     db = 1
+    period = 1440
     
     def __init__(self, period=1440):
         self.rd = redis.Redis(host=self.host, port=self.port, db=self.db)
