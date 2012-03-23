@@ -1,7 +1,6 @@
 
 # standard
 import cStringIO
-import cPickle
 import optparse
 import os
 import resource
@@ -19,9 +18,6 @@ from core import __version__
 # vendor
 import gevent, gevent.socket
 socket = gevent.socket
-
-# unique tracking configuration
-UNIQUE_STORAGE = '/opt/gstatsd'
 
 # constants
 INTERVAL = 10.0
@@ -99,7 +95,6 @@ class StatsDaemon(object):
         if port is None:
             self.exit(E_BADADDR % bindaddr)
         self._bindaddr = (host, port)
-        self._pickle = os.path.join(UNIQUE_STORAGE, "%s:%s" % self._bindaddr)
 
         # TODO: generalize to support more than one sink type.  currently
         # only the graphite backend is present, but we may want to write
@@ -120,11 +115,7 @@ class StatsDaemon(object):
                 self.error(str(err))
             self.exit('exiting.')
 
-        try:
-            self._uniques = cPickle.load(open(self._pickle))
-            self.error('loaded %d metrics from %s' % (len(self._uniques.metrics), self._pickle))
-        except IOError, e:
-            self._uniques = unique.Uniques()
+        self._uniques = unique.RedisUniques()
         self._percent = float(percent)
         self._interval = float(interval)
         self._debug = debug
@@ -183,7 +174,6 @@ class StatsDaemon(object):
 
     def _shutdown(self):
         "Shutdown the server"
-        cPickle.dump(self._uniques, open(self._pickle, 'w'))
         self.exit("service exiting", code=0)
 
     def _process(self, data, _):

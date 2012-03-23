@@ -28,6 +28,7 @@ while True
 	expire()
 '''
 import collections, math, time
+import redis
 
 class Uniques(object):
     def __init__(self, period=1440):
@@ -70,4 +71,31 @@ class Uniques(object):
 
     def __repr__(self):
         return '<%s[0x%x] %s>' % (self.__class__.__name__, id(self), ' '.join('%s=%s' % (k, v) for k, v in self.__dict__.iteritems()))
+
+class RedisUniques(Uniques):
+    host = 'gordo2'
+    port = 6380
+    db = 1
+    
+    def __init__(self, period=1440):
+        super(RedisUniques, self).__init__(period=period)
+        self.rd = redis.Redis(host=self.host, port=self.port, db=self.db)
+
+    def add(self, metric, value):
+        self.rd.zadd(metric, value, int(time.time()))
+
+    def expire(self):
+        for metric in self.rd.keys():
+            before = self.rd.zcard(metric)
+            self.rd.zremrangebyscore(metric, 0, int(time.time()) - self.period*60)
+            after = self.rd.zcard(metric)
+            if before != after:
+                print '%s %d before expiration %d after (%d removed)' % (metric, before, after, before-after)
+
+
+    def count(self, metric):
+        return self.rd.zcard(metric)
+
+    def __repr__(self):
+        return '<%s[0x%x] host=%s port=%d db=%d>' % (self.__class__.__name__, id(self), self.host, self.port, self.db)
 
