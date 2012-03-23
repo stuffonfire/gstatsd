@@ -115,7 +115,7 @@ class StatsDaemon(object):
                 self.error(str(err))
             self.exit('exiting.')
 
-        self._uniques = unique.RedisUniques()
+        self._uniques = unique.Uniques()
         self._percent = float(percent)
         self._interval = float(interval)
         self._debug = debug

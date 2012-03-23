@@ -87,7 +87,7 @@ class GraphiteSink(Sink):
         
         # unique stats
         if uniques:
-            for key in uniques.metrics.iterkeys():
+            for key in uniques.metrics():
                 buf.write('uniques.%s %d %d\n' % (key, uniques.count(key), now))
                 num_uniques += 1
 
