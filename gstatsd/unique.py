@@ -36,7 +36,7 @@ class Uniques(object):
     db = 1
     
     def __init__(self, period=1440):
-        super(RedisUniques, self).__init__(period=period)
+        super(Uniques, self).__init__(period=period)
         self.rd = redis.Redis(host=self.host, port=self.port, db=self.db)
 
     def add(self, metric, value):
