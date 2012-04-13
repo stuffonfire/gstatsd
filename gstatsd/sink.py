@@ -99,13 +99,13 @@ class GraphiteSink(Sink):
         for host in self._hosts:
             # flush stats to graphite
             try:
-                print 'connecting to %s' % host
+                print 'connecting to %s:%s' % host
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect(host)
-                print 'sending to %s' % host
+                print 'sending to %s:%s' % host
                 sock.sendall(buf.getvalue())
                 sock.close()
-                print 'closed %s' % host
+                print 'closed %s:%s' % host
             except Exception, ex:
                 self.error(E_SENDFAIL % ('graphite', host, ex))
 
