@@ -31,7 +31,7 @@ import collections, math, time
 import redis
 
 class Uniques(object):
-    host = '72.3.189.232'
+    host = 'gordo2.local'
     port = 6380
     db = 1
     period = 1440
