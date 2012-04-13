@@ -31,7 +31,7 @@ import collections, math, time
 import redis
 
 class Uniques(object):
-    host = 'gordo2'
+    host = '72.3.189.232'
     port = 6380
     db = 1
     period = 1440
@@ -46,13 +46,16 @@ class Uniques(object):
         return self.rd.keys()
 
     def expire(self):
+        pipe = self.rd.pipeline()
         for metric in self.metrics():
-            before = self.rd.zcard(metric)
-            self.rd.zremrangebyscore(metric, 0, int(time.time()) - self.period*60)
-            after = self.rd.zcard(metric)
-            if before != after:
-                print '%s %d before expiration %d after (%d removed)' % (metric, before, after, before-after)
+            pipe.zremrangebyscore(metric, 0, int(time.time()) - self.period*60)
+        pipe.execute()
 
+    def counts(self, *args):
+        pipe = self.rd.pipeline()
+        for a in args:
+            pipe.zcard(a)
+        return pipe.execute()
 
     def count(self, metric):
         return self.rd.zcard(metric)
